@@ -1,0 +1,345 @@
+---
+title: "Affective Ambivalence - Data Exploration RCS 2021"
+author: "Axel"
+date: "25 2 2022"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r load packages, include=FALSE}
+
+library(foreign)
+library(dplyr)
+library(summarytools)
+library(psych)
+library(ggplot2)
+library(corrr)
+library(scales)
+library(jtools)
+```
+
+```{r, two lines test, include=FALSE}
+source("http://webstimate.org/twolines/twolines.R")
+```
+
+```{r load data, include=FALSE}
+
+rcs21 <- read.spss("../data/ZA7703_v2-0-0_en.sav",
+          use.value.labels = FALSE, to.data.frame = TRUE)
+
+rcs21[rcs21 < 0] <- NA
+```
+
+```{r demographics, include=FALSE}
+
+###Gender
+
+rcs21$gend <- factor(rcs21$pre063,
+                     levels = c(1, 2),
+                     labels = c("male", "female"))
+
+###Age
+
+rcs21$age <- 2021 - rcs21$pre062
+
+###Education
+
+rcs21$edu1 <- rcs21$pre064
+
+rcs21 <- rcs21 %>% mutate(edu = case_when(edu1 == 1 | edu1 == 2 ~ 1,
+                                          edu1 == 3 | edu1 == 6 | edu1 == 7 ~ 2,
+                                          edu1 == 4 | edu1 == 5 ~ 3))
+
+rcs21$edu <- factor(rcs21$edu,
+                    levels = c(1, 2, 3),
+                    labels = c("low", "medium", "high"))
+
+###Region of residency
+
+rcs21$region <- factor(rcs21$ostwest,
+                       levels = c(0, 1),
+                       labels = c("East Germany", "West Germany"))
+
+###Subjective Status
+
+rcs21$stat <- rcs21$pos041
+```
+
+```{r affective ambivalence, include=FALSE}
+
+##Feelings
+
+rcs21$Laschet_neg <- 6 - rcs21$pre032a
+rcs21$Laschet_pos <- 6 - rcs21$pre033a
+
+rcs21$Baerbock_neg <- 6 - rcs21$pre032b
+rcs21$Baerbock_pos <- 6- rcs21$pre033b
+
+rcs21$Scholz_neg <- 6- rcs21$pre032c
+rcs21$Scholz_pos <- 6- rcs21$pre033c
+
+##Ambivalence scores
+
+rcs21$Laschet_amb <- (rcs21$Laschet_pos + rcs21$Laschet_neg) / 2 - 
+  abs(rcs21$Laschet_pos - rcs21$Laschet_neg)
+
+rcs21$Laschet_amb <- rescale(rcs21$Laschet_amb)
+
+rcs21$Baerbock_amb <- (rcs21$Baerbock_pos + rcs21$Baerbock_neg) / 2 - 
+  abs(rcs21$Baerbock_pos - rcs21$Baerbock_neg)
+
+rcs21$Baerbock_amb <- rescale(rcs21$Baerbock_amb)
+
+rcs21$Scholz_amb <- (rcs21$Scholz_pos + rcs21$Scholz_neg) / 2 - 
+  abs(rcs21$Scholz_pos - rcs21$Scholz_neg)
+
+rcs21$Scholz_amb <- rescale(rcs21$Scholz_amb)
+
+rcs21$mean_amb <- rowMeans(rcs21[, c("Laschet_amb", "Baerbock_amb", "Scholz_amb")], na.rm = TRUE)
+```
+
+```{r cognitive ambivalence, include=FALSE}
+
+##Strengths & Weaknesses
+
+rcs21$Laschet_weak <- 6 - rcs21$pre030a
+rcs21$Laschet_str <- 6 - rcs21$pre031a
+
+rcs21$Baerbock_weak <- 6 - rcs21$pre030b
+rcs21$Baerbock_str <- 6- rcs21$pre031b
+
+rcs21$Scholz_weak <- 6- rcs21$pre030c
+rcs21$Scholz_str <- 6- rcs21$pre031c
+
+##Ambivalence scores
+
+rcs21$Laschet_amb2 <- (rcs21$Laschet_str + rcs21$Laschet_weak) / 2 - 
+  abs(rcs21$Laschet_str - rcs21$Laschet_weak)
+
+rcs21$Laschet_amb2 <- rescale(rcs21$Laschet_amb2)
+
+rcs21$Baerbock_amb2 <- (rcs21$Baerbock_str + rcs21$Baerbock_weak) / 2 - 
+  abs(rcs21$Baerbock_str - rcs21$Baerbock_weak)
+
+rcs21$Baerbock_amb2 <- rescale(rcs21$Baerbock_amb2)
+
+rcs21$Scholz_amb2 <- (rcs21$Scholz_str + rcs21$Scholz_weak) / 2 - 
+  abs(rcs21$Scholz_str - rcs21$Scholz_weak)
+
+rcs21$Scholz_amb2 <- rescale(rcs21$Scholz_amb2)
+
+rcs21$mean_amb2 <- rowMeans(rcs21[, c("Laschet_amb2", "Baerbock_amb2", "Scholz_amb2")], na.rm = TRUE)
+```
+
+```{r political variables, include=FALSE}
+
+##Attitudes toward candidates
+
+rcs21$Laschet_att <- rcs21$pre029a
+rcs21$Baerbock_att <- rcs21$pre029b
+rcs21$Scholz_att <- rcs21$pre029c
+
+##Political interest
+
+rcs21$pol_int <- 6 - rcs21$pre001
+
+##Campaign interest
+
+rcs21$camp_int <- 6 - rcs21$pre002
+
+##Average political interest
+
+rcs21$mean_int <- rowMeans(rcs21[, c("pol_int", "camp_int")], na.rm = TRUE)
+
+##Symbolic Ideology
+
+rcs21$symb_id <- rcs21$pre018
+
+##Economic Ideology
+
+rcs21$econ_id <- 12 - rcs21$pre020
+
+```
+
+```{r psychological dispositions, include=FALSE}
+
+##Need for Closure
+
+rcs21$nfc1 <- 6 - rcs21$pos040a
+rcs21$nfc2 <- 6 - rcs21$pos040b
+
+rcs21$nfc_M <- rowMeans(rcs21[, c("nfc1", "nfc2")], na.rm = TRUE)
+
+##Need to evaluate
+
+rcs21$nfe <- 6 - rcs21$pos040c
+
+##Need for Cognition
+
+rcs21$nfcog <- rcs21$pos040d
+
+##Conflict Avoidance
+
+rcs21$ca <- 6 - rcs21$pos040e
+
+##Level of Construal (higher = more abstract)
+
+rcs21$cl <- 6 - rcs21$pos040f
+```
+
+```{r, include=FALSE}
+rcs <- rcs21 %>% select(gend, age, edu, region, stat, 
+                        Laschet_neg, Laschet_pos, Laschet_amb, 
+                        Baerbock_neg, Baerbock_pos, Baerbock_amb, 
+                        Scholz_neg, Scholz_pos, Scholz_amb, mean_amb,
+                        Laschet_weak, Laschet_str, Laschet_amb2, 
+                        Baerbock_weak, Baerbock_str, Baerbock_amb2, 
+                        Scholz_weak, Scholz_str, Scholz_amb2, mean_amb2,
+                        Laschet_att, Baerbock_att, Scholz_att,
+                        pol_int, camp_int, mean_int, 
+                        symb_id, econ_id, 
+                        nfc1, nfc2, nfc_M, nfe, nfcog, ca, cl)
+```
+
+```{r, include=FALSE, warning=FALSE}
+attach(rcs)
+```
+
+# Explore correlations
+
+```{r}
+knitr::kable(rcs %>%
+               select(symb_id, nfc_M, mean_int, Laschet_amb, Baerbock_amb, Scholz_amb, mean_amb) %>%
+               correlate())
+
+```
+
+# U-shape: Symbolic ideology & affective ambivalence
+
+### Average ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(rcs, aes(x = symb_id, y = mean_amb)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb ~ symb_id, data = rcs)
+```
+
+### Laschet
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(rcs, aes(x = symb_id, y = Laschet_amb)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Laschet_amb ~ symb_id, data = rcs)
+```
+
+### Baerbock
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(rcs, aes(x = symb_id, y = Baerbock_amb)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Baerbock_amb ~ symb_id, data = rcs)
+```
+
+### Scholz
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(rcs, aes(x = symb_id, y = Scholz_amb)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Scholz_amb ~ symb_id, data = rcs)
+```
+
+# U-shape: Symbolic ideology & Cognitive ambivalence
+
+### Average ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(rcs, aes(x = symb_id, y = mean_amb2)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb2 ~ symb_id, data = rcs)
+```
+
+### Laschet
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(rcs, aes(x = symb_id, y = Laschet_amb2)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Laschet_amb2 ~ symb_id, data = rcs)
+```
+
+### Baerbock
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(rcs, aes(x = symb_id, y = Baerbock_amb2)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Baerbock_amb2 ~ symb_id, data = rcs)
+```
+
+### Scholz
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(rcs, aes(x = symb_id, y = Scholz_amb2)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Scholz_amb2 ~ symb_id, data = rcs)
+```
+
+# U-shape: Symbolic ideology & affective ambivalence controlling for attitudes
+
+### Laschet
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE}
+twolines(Laschet_amb ~ symb_id + Laschet_att, data = rcs)
+```
+
+### Baerbock
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE}
+twolines(Baerbock_amb ~ symb_id + Baerbock_att, data = rcs)
+```
+
+### Scholz
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE}
+twolines(Scholz_amb ~ symb_id + Scholz_att, data = rcs)
+```

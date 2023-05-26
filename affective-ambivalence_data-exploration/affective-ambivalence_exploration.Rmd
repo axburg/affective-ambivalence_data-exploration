@@ -1,0 +1,587 @@
+---
+title: "Affective Ambivalence - Data Exploration WKP 2017"
+author: "Axel Burger"
+date: "25 2 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r load packages, include=FALSE}
+
+library(foreign)
+library(dplyr)
+library(summarytools)
+library(psych)
+library(ggplot2)
+library(corrr)
+library(scales)
+library(jtools)
+```
+
+```{r, two lines test, include=FALSE}
+source("http://webstimate.org/twolines/twolines.R")
+```
+
+```{r load data, include=FALSE}
+
+wkp17 <- read.spss("../data/ZA6804_en_v7-0-0.sav",
+          use.value.labels = FALSE, to.data.frame = TRUE)
+
+wkp17[wkp17 < 0] <- NA
+```
+
+```{r demographics, include=FALSE}
+
+###Gender
+
+wkp17$gend <- factor(wkp17$kpx_2280,
+                     levels = c(1, 2),
+                     labels = c("male", "female"))
+
+###Age
+
+wkp17$age <- 2017 - wkp17$kpx_2290
+
+###Education
+
+wkp17$edu1 <- coalesce(wkp17$kp1_2320, wkp17$kpa1_2320)
+
+wkp17 <- wkp17 %>% mutate(edu = case_when(edu1 == 1 | edu1 == 2 ~ 1,
+                                          edu1 == 3 | edu1 == 9 ~ 2,
+                                          edu1 == 4 | edu1 == 5 ~ 3))
+
+wkp17$edu <- factor(wkp17$edu,
+                    levels = c(1, 2, 3),
+                    labels = c("low", "medium", "high"))
+
+###Income
+
+wkp17$inc <- coalesce(wkp17$kp1_2591, wkp17$kpa1_2591)
+
+###Region of residency
+
+wkp17$region <- factor(wkp17$ostwest,
+                       levels = c(0, 1),
+                       labels = c("East Germany", "West Germany"))
+
+```
+
+```{r affective ambivalence, include=FALSE}
+
+##Feelings
+
+wkp17$Merkel_neg_w4 <- wkp17$kp4_662a
+wkp17$Merkel_neg_w6 <- wkp17$kp6_662a
+wkp17$Merkel_pos_w4 <- wkp17$kp4_663a
+wkp17$Merkel_pos_w6 <- wkp17$kp6_663a
+
+wkp17$Schulz_neg_w4 <- wkp17$kp4_662b
+wkp17$Schulz_neg_w6 <- wkp17$kp6_662b
+wkp17$Schulz_pos_w4 <- wkp17$kp4_663b
+wkp17$Schulz_pos_w6 <- wkp17$kp6_663b
+
+##Ambivalence scores
+
+wkp17$Merkel_amb_w4 <- (wkp17$Merkel_pos_w4 + wkp17$Merkel_neg_w4) / 2 - 
+  abs(wkp17$Merkel_pos_w4 - wkp17$Merkel_neg_w4)
+
+wkp17$Merkel_amb_w6 <- (wkp17$Merkel_pos_w6 + wkp17$Merkel_neg_w6) / 2 - 
+  abs(wkp17$Merkel_pos_w6 - wkp17$Merkel_neg_w6)
+
+wkp17$Schulz_amb_w4 <- (wkp17$Schulz_pos_w4 + wkp17$Schulz_neg_w4) / 2 - 
+  abs(wkp17$Schulz_pos_w4 - wkp17$Schulz_neg_w4)
+
+wkp17$Schulz_amb_w6 <- (wkp17$Schulz_pos_w6 + wkp17$Schulz_neg_w6) / 2 - 
+  abs(wkp17$Schulz_pos_w6 - wkp17$Schulz_neg_w6)
+
+cor.test(wkp17$Merkel_amb_w4, wkp17$Schulz_amb_w4, use ="complete.obs") # correlation: r = -.47
+cor.test(wkp17$Merkel_amb_w6, wkp17$Schulz_amb_w6, use ="complete.obs") # correlation: r = -.46
+
+wkp17$mean_amb_w4 <- rowMeans(wkp17[, c("Merkel_amb_w4", "Schulz_amb_w4")], na.rm = TRUE)
+
+wkp17$mean_amb_w6 <- rowMeans(wkp17[, c("Merkel_amb_w6", "Schulz_amb_w6")], na.rm = TRUE)
+```
+
+```{r political variables, include=FALSE}
+
+##Political interest
+
+wkp17$pol_int_w4 <- 6 - wkp17$kp4_010
+wkp17$pol_int_w6 <- 6 - wkp17$kp6_010
+
+##Symbolic ideology
+
+wkp17$symb_id_w4 <- wkp17$kp4_1500
+wkp17$symb_id_w6 <- wkp17$kp6_1500
+
+##Economic Ideology
+
+wkp17$econ_id_w4 <- 8 - wkp17$kp4_1090
+wkp17$econ_id_w6 <- 8 - wkp17$kp6_1090
+
+##Socio-cultural Ideology (Immigration)
+
+wkp17$soc_id_w4 <- wkp17$kp4_1130
+wkp17$soc_id_w6 <- wkp17$kp6_1130
+
+##Authoritarianism
+
+wkp17$aut1 <- coalesce(wkp17$kp2_060i, wkp17$kpa1_060i)
+wkp17$aut2 <- coalesce(wkp17$kp2_060j, wkp17$kpa1_060j)
+wkp17$aut3 <- coalesce(wkp17$kp2_060k, wkp17$kpa1_060k)
+
+wkp17$aut_M <- rowMeans(wkp17[, c("aut1", "aut2", "aut3")], na.rm = TRUE)
+
+psych::alpha(wkp17[, c("aut1", "aut2", "aut3")]) #alpha = .72
+
+```
+```{r psychological dispositions, include=FALSE}
+
+##Schwartz values##
+
+for (x in c("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u")) {
+  wkp17[[paste0('schwartz_',x,'1')]] <- wkp17[[paste0('kp1_3320',x)]]
+}
+
+for (x in c("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u")) {
+  wkp17[[paste0('schwartz_',x,'2')]] <- wkp17[[paste0('kpa1_3320',x)]]
+}
+
+for (x in c("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u")) {
+  wkp17[[paste0('schwartz_',x)]] <- coalesce(wkp17[[paste0('schwartz_',x,'1')]], wkp17[[paste0('schwartz_',x,'2')]])
+}
+
+wkp17 <- wkp17 %>% rowwise() %>% mutate(cons = mean(c(schwartz_e, schwartz_m, schwartz_q, schwartz_n, schwartz_j, schwartz_t), 
+                                                    na.rm = T))
+
+wkp17 <- wkp17 %>% rowwise() %>% mutate(open = mean(c(schwartz_a, schwartz_i, schwartz_f, schwartz_s, schwartz_g, schwartz_r), 
+                                                    na.rm = T))
+
+wkp17 <- wkp17 %>% rowwise() %>% mutate(s_trans = mean(c(schwartz_c, schwartz_h, schwartz_u, schwartz_k, schwartz_p), 
+                                                    na.rm = T))
+
+wkp17 <- wkp17 %>% rowwise() %>% mutate(s_enh = mean(c(schwartz_b, schwartz_o, schwartz_d, schwartz_l), 
+                                                      na.rm = T))
+
+wkp17$open_cons <- wkp17$cons - wkp17$open
+
+wkp17$trans_enh <- wkp17$s_enh - wkp17$s_trans
+
+##Need for Closure
+
+wkp17$nfc1 <- coalesce(wkp17$kp3_1570g, wkp17$kpa1_1570g)
+wkp17$nfc2 <- coalesce(wkp17$kp3_1570h, wkp17$kpa1_1570h)
+wkp17$nfc3 <- coalesce(wkp17$kp3_1570i, wkp17$kpa1_1570i)
+
+wkp17$nfc_M <- rowMeans(wkp17[, c("nfc1", "nfc2", "nfc3")], na.rm = TRUE)
+
+psych::alpha(wkp17[, c("nfc1", "nfc2", "nfc3")]) #alpha = .78
+```
+
+```{r, include=FALSE}
+attach(wkp17)
+```
+
+# General Idea
+
+Hypotheses
+
+## Main conclusions:
+
+* The bivariate correlation of symbolic ideology with affective ambivalence is negative, which supports the Jost-perspective.
+* The bivariate correlation of political interest with affective ambivalence is negative, which supports the idea that elaborating on a topic tends to deacrease ambivalence.
+* Measures of psychological needs (open_cons as a measure of needs for security and certainty) and cognitive style (nfc_M) are very weakly correlated with affective ambivalence and there is also no evidence for a u-shaped association.
+* The measure of needs for security and certainty (open_cons) is more strongly correlated with symbolic ideology than the measure of need for cognitive closure (nfc_M).
+* Political interest drops at the middle category of symbolic ideology creating a u-shaped pattern.
+* The inversely u-shaped association of symbolic ideology with affective ambivalence holds when controlling for political interest.
+* The inversely u-shaped association of ideology with affective ambivalence can be observed for economic and social ideology.
+
+## Ideas for further analyses:
+
+* Test robustness of the ideology-ambivalence link in multivariate analyses with controls.
+
+
+# Explore correlations
+
+```{r}
+knitr::kable(wkp17 %>% 
+              select(symb_id_w4,open_cons, nfc_M, pol_int_w4, Merkel_amb_w4, Schulz_amb_w4, mean_amb_w4) %>% 
+              correlate(), caption = "Wave 4")
+```
+
+```{r}
+knitr::kable(wkp17 %>% 
+              select(symb_id_w6,open_cons, nfc_M, pol_int_w6, Merkel_amb_w6, Schulz_amb_w6, mean_amb_w6) %>% 
+              correlate(), caption = "Wave 6")
+```
+
+# U-shape: Symbolic ideology & affective ambivalence
+
+### Analytic approach:
+
+Inversely u-shaped associations of variables with affective ambivalence could be tested using the following approaches:
+
+* Two lines test
+* Polynomial regression
+* Lonlinear moderation of the association of positive and negative affect
+
+## Wave 4
+
+### Average ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w4, y = mean_amb_w4)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb_w4 ~ symb_id_w4, data = wkp17)
+```
+
+**Polynomial regression**
+
+```{r, message=FALSE}
+reg1a <- lm(rescale(mean_amb_w4) ~ rescale(symb_id_w4))
+reg1b <- lm(rescale(mean_amb_w4) ~ rescale(symb_id_w4) + I(rescale(symb_id_w4)^2))
+reg1c <- lm(rescale(mean_amb_w4) ~ rescale(symb_id_w4) + gend + age + edu + inc + region)
+reg1d <- lm(rescale(mean_amb_w4) ~ rescale(symb_id_w4) + I(rescale(symb_id_w4)^2) + gend + age + edu + inc + region)
+export_summs(reg1a, reg1b, reg1c, reg1d, error_pos = "right")
+```
+
+### Merkel
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w4, y = Merkel_amb_w4)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Merkel_amb_w4 ~ symb_id_w4, data = wkp17)
+```
+
+**Polynomial regression**
+
+```{r, message=FALSE}
+reg2a <- lm(rescale(Merkel_amb_w4) ~ rescale(symb_id_w4))
+reg2b <- lm(rescale(Merkel_amb_w4) ~ rescale(symb_id_w4) + I(rescale(symb_id_w4)^2))
+reg2c <- lm(rescale(Merkel_amb_w4) ~ rescale(symb_id_w4) + gend + age + edu + inc + region)
+reg2d <- lm(rescale(Merkel_amb_w4) ~ rescale(symb_id_w4) + I(rescale(symb_id_w4)^2) + gend + age + edu + inc + region)
+export_summs(reg2a, reg2b, reg2c, reg2d, error_pos = "right")
+```
+
+### Schulz
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w4, y = Schulz_amb_w4)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Schulz_amb_w4 ~ symb_id_w4, data = wkp17)
+```
+
+**Polynomial regression**
+
+```{r, message=FALSE}
+reg3a <- lm(rescale(Schulz_amb_w4) ~ rescale(symb_id_w4))
+reg3b <- lm(rescale(Schulz_amb_w4) ~ rescale(symb_id_w4) + I(rescale(symb_id_w4)^2))
+reg3c <- lm(rescale(Schulz_amb_w4) ~ rescale(symb_id_w4) + gend + age + edu + inc + region)
+reg3d <- lm(rescale(Schulz_amb_w4) ~ rescale(symb_id_w4) + I(rescale(symb_id_w4)^2) + gend + age + edu + inc + region)
+export_summs(reg3a, reg3b, reg3c, reg3d, error_pos = "right")
+```
+
+## Wave 6
+
+### Average ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w6, y = mean_amb_w6)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb_w6 ~ symb_id_w6, data = wkp17)
+```
+
+**Polynomial regression**
+
+```{r, message=FALSE}
+reg4a <- lm(rescale(mean_amb_w6) ~ rescale(symb_id_w6))
+reg4b <- lm(rescale(mean_amb_w6) ~ rescale(symb_id_w6) + I(rescale(symb_id_w6)^2))
+reg4c <- lm(rescale(mean_amb_w6) ~ rescale(symb_id_w6) + gend + age + edu + inc + region)
+reg4d <- lm(rescale(mean_amb_w6) ~ rescale(symb_id_w6) + I(rescale(symb_id_w6)^2) + gend + age + edu + inc + region)
+export_summs(reg4a, reg4b, reg4c, reg4d, error_pos = "right")
+```
+
+### Merkel
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w6, y = Merkel_amb_w6)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Merkel_amb_w6 ~ symb_id_w6, data = wkp17)
+```
+
+**Polynomial regression**
+
+```{r, message=FALSE}
+reg5a <- lm(rescale(Merkel_amb_w6) ~ rescale(symb_id_w6))
+reg5b <- lm(rescale(Merkel_amb_w6) ~ rescale(symb_id_w6) + I(rescale(symb_id_w6)^2))
+reg5c <- lm(rescale(Merkel_amb_w6) ~ rescale(symb_id_w6) + gend + age + edu + inc + region)
+reg5d <- lm(rescale(Merkel_amb_w6) ~ rescale(symb_id_w6) + I(rescale(symb_id_w6)^2) + gend + age + edu + inc + region)
+export_summs(reg5a, reg5b, reg5c, reg5d, error_pos = "right")
+```
+
+### Schulz
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w6, y = Schulz_amb_w6)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Schulz_amb_w6 ~ symb_id_w6, data = wkp17)
+```
+
+**Polynomial regression**
+
+```{r, message=FALSE}
+reg6a <- lm(rescale(Schulz_amb_w6) ~ rescale(symb_id_w6))
+reg6b <- lm(rescale(Schulz_amb_w6) ~ rescale(symb_id_w6) + I(rescale(symb_id_w6)^2))
+reg6c <- lm(rescale(Schulz_amb_w6) ~ rescale(symb_id_w6) + gend + age + edu + inc + region)
+reg6d <- lm(rescale(Schulz_amb_w6) ~ rescale(symb_id_w6) + I(rescale(symb_id_w6)^2) + gend + age + edu + inc + region)
+export_summs(reg6a, reg6b, reg6c, reg6d, error_pos = "right")
+```
+
+# U-shape: Symbolic ideology & Need for Closure
+
+## Wave 4
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w4, y = nfc_M)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(nfc_M ~ symb_id_w4, data = wkp17)
+```
+
+## Wave 6
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w6, y = nfc_M)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(nfc_M ~ symb_id_w6, data = wkp17)
+```
+
+# U-shape: Symbolic ideology & Needs for Security and Certainty
+
+## Wave 4
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w4, y = open_cons)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(open_cons ~ symb_id_w4, data = wkp17)
+```
+
+## Wave 6
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w6, y = open_cons)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(open_cons ~ symb_id_w6, data = wkp17)
+```
+
+# U-shape: Symbolic ideology & Political Interest
+
+## Wave 4
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w4, y = pol_int_w4)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(pol_int_w4 ~ symb_id_w4, data = wkp17)
+```
+
+## Wave 6
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = symb_id_w6, y = pol_int_w6)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(pol_int_w6 ~ symb_id_w6, data = wkp17)
+```
+
+# U-shape: Affective Ambivalence & Political Interest
+
+## Wave 4
+
+### Average ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = pol_int_w4, y = mean_amb_w4)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb_w4 ~ pol_int_w4, data = wkp17)
+```
+
+### Merkel
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = pol_int_w4, y = Merkel_amb_w4)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Merkel_amb_w4 ~ pol_int_w4, data = wkp17)
+```
+
+### Schulz
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = pol_int_w4, y = Schulz_amb_w4)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Schulz_amb_w4 ~ pol_int_w4, data = wkp17)
+```
+
+# Does the U-shaped link of ideology with ambivalence holf when controlling for political interest
+
+## Wave 4
+
+### Average ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb_w4 ~ symb_id_w4 + pol_int_w4, data = wkp17)
+```
+
+### Merkel
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE}
+twolines(Merkel_amb_w4 ~ symb_id_w4 + pol_int_w4, data = wkp17)
+```
+
+### Schulz
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE}
+twolines(Schulz_amb_w4 ~ symb_id_w4 + pol_int_w4, data = wkp17)
+```
+
+## Wave 6
+
+### Average ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb_w6 ~ symb_id_w6 + pol_int_w6, data = wkp17)
+```
+
+### Merkel
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE}
+twolines(Merkel_amb_w6 ~ symb_id_w6 + pol_int_w6, data = wkp17)
+```
+
+### Schulz
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE}
+twolines(Schulz_amb_w6 ~ symb_id_w6 + pol_int_w6, data = wkp17)
+```
+
+# Investigating the U-shaped link of ideology with ambivalence for different ideology-dimensions
+
+## Wave 4
+
+### Average ambivalence
+
+**Two lines test**
+
+Economic Ideology
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = econ_id_w4, y = mean_amb_w4)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb_w4 ~ econ_id_w4, data = wkp17)
+```
+
+Social Ideology
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = soc_id_w4, y = mean_amb_w4)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb_w4 ~ soc_id_w4, data = wkp17)
+```
+
+## Wave 6
+
+### Average ambivalence
+
+**Two lines test**
+
+Economic Ideology
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = econ_id_w6, y = mean_amb_w6)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb_w6 ~ econ_id_w6, data = wkp17)
+```
+
+Social Ideology
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp17, aes(x = soc_id_w6, y = mean_amb_w6)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(mean_amb_w6 ~ soc_id_w6, data = wkp17)
+```

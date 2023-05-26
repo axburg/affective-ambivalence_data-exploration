@@ -1,0 +1,886 @@
+---
+title: "Affective Ambivalence - Data Exploration WKP 2013"
+author: "Axel Burger"
+date: "17 3 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r load packages, include=FALSE}
+
+library(foreign)
+library(dplyr)
+library(summarytools)
+library(psych)
+library(ggplot2)
+library(corrr)
+library(scales)
+library(jtools)
+```
+
+```{r, two lines test, include=FALSE}
+source("http://webstimate.org/twolines/twolines.R")
+```
+
+```{r load data, include=FALSE}
+
+wkp13 <- read.spss("../data/ZA5704_en_v3-2-0.sav",
+          use.value.labels = FALSE, to.data.frame = TRUE)
+
+wkp13[wkp13 < 0] <- NA
+```
+
+```{r demographics, include=FALSE}
+
+###Gender
+
+wkp13$gend <- factor(wkp13$kpx_2280,
+                     levels = c(1, 2),
+                     labels = c("male", "female"))
+
+###Age
+
+wkp13$age <- 2013 - wkp13$kpx_2290
+
+###Education
+
+wkp13$edu1 <- wkp13$kpx_2320
+
+wkp13 <- wkp13 %>% mutate(edu = case_when(edu1 == 1 | edu1 == 2 ~ 1,
+                                          edu1 == 3 | edu1 == 9 ~ 2,
+                                          edu1 == 4 | edu1 == 5 ~ 3))
+
+wkp13$edu <- factor(wkp13$edu,
+                    levels = c(1, 2, 3),
+                    labels = c("low", "medium", "high"))
+
+###Income
+
+wkp13$inc <- wkp13$kpx_2591
+
+###Region of residency
+
+wkp13$region <- factor(wkp13$ostwest,
+                       levels = c(0, 1),
+                       labels = c("East Germany", "West Germany"))
+
+```
+
+```{r affective ambivalence, include=FALSE}
+
+##Feelings
+
+wkp13$CDU_neg_w1 <- wkp13$kp1_2800a
+wkp13$CDU_neg_w3 <- wkp13$kp3_2800a
+wkp13$CDU_neg_w6 <- wkp13$kp6_2800a
+
+wkp13$SPD_neg_w1 <- wkp13$kp1_2800c
+wkp13$SPD_neg_w3 <- wkp13$kp3_2800c
+wkp13$SPD_neg_w6 <- wkp13$kp6_2800c
+
+wkp13$FDP_neg_w1 <- wkp13$kp1_2800d
+wkp13$FDP_neg_w3 <- wkp13$kp3_2800d
+wkp13$FDP_neg_w6 <- wkp13$kp6_2800d
+
+wkp13$GRUENE_neg_w1 <- wkp13$kp1_2800e
+wkp13$GRUENE_neg_w3 <- wkp13$kp3_2800e
+wkp13$GRUENE_neg_w6 <- wkp13$kp6_2800e
+
+wkp13$LINKE_neg_w1 <- wkp13$kp1_2800f
+wkp13$LINKE_neg_w3 <- wkp13$kp3_2800f
+wkp13$LINKE_neg_w6 <- wkp13$kp6_2800f
+
+wkp13$CDU_pos_w1 <- wkp13$kp1_2801a
+wkp13$CDU_pos_w3 <- wkp13$kp3_2801a
+wkp13$CDU_pos_w6 <- wkp13$kp6_2801a
+
+wkp13$SPD_pos_w1 <- wkp13$kp1_2801c
+wkp13$SPD_pos_w3 <- wkp13$kp3_2801c
+wkp13$SPD_pos_w6 <- wkp13$kp6_2801c
+
+wkp13$FDP_pos_w1 <- wkp13$kp1_2801d
+wkp13$FDP_pos_w3 <- wkp13$kp3_2801d
+wkp13$FDP_pos_w6 <- wkp13$kp6_2801d
+
+wkp13$GRUENE_pos_w1 <- wkp13$kp1_2801e
+wkp13$GRUENE_pos_w3 <- wkp13$kp3_2801e
+wkp13$GRUENE_pos_w6 <- wkp13$kp6_2801e
+
+wkp13$LINKE_pos_w1 <- wkp13$kp1_2801f
+wkp13$LINKE_pos_w3 <- wkp13$kp3_2801f
+wkp13$LINKE_pos_w6 <- wkp13$kp6_2801f
+
+##Ambivalence scores
+
+wkp13$CDU_amb_w1 <- (wkp13$CDU_pos_w1 + wkp13$CDU_neg_w1) / 2 - 
+  abs(wkp13$CDU_pos_w1 - wkp13$CDU_neg_w1)
+
+wkp13$CDU_amb_w3 <- (wkp13$CDU_pos_w3 + wkp13$CDU_neg_w3) / 2 - 
+  abs(wkp13$CDU_pos_w3 - wkp13$CDU_neg_w3)
+
+wkp13$CDU_amb_w6 <- (wkp13$CDU_pos_w6 + wkp13$CDU_neg_w6) / 2 - 
+  abs(wkp13$CDU_pos_w6 - wkp13$CDU_neg_w6)
+
+wkp13$SPD_amb_w1 <- (wkp13$SPD_pos_w1 + wkp13$SPD_neg_w1) / 2 - 
+  abs(wkp13$SPD_pos_w1 - wkp13$SPD_neg_w1)
+
+wkp13$SPD_amb_w3 <- (wkp13$SPD_pos_w3 + wkp13$SPD_neg_w3) / 2 - 
+  abs(wkp13$SPD_pos_w3 - wkp13$SPD_neg_w3)
+
+wkp13$SPD_amb_w6 <- (wkp13$SPD_pos_w6 + wkp13$SPD_neg_w6) / 2 - 
+  abs(wkp13$SPD_pos_w6 - wkp13$SPD_neg_w6)
+
+wkp13$FDP_amb_w1 <- (wkp13$FDP_pos_w1 + wkp13$FDP_neg_w1) / 2 - 
+  abs(wkp13$FDP_pos_w1 - wkp13$FDP_neg_w1)
+
+wkp13$FDP_amb_w3 <- (wkp13$FDP_pos_w3 + wkp13$FDP_neg_w3) / 2 - 
+  abs(wkp13$FDP_pos_w3 - wkp13$FDP_neg_w3)
+
+wkp13$FDP_amb_w6 <- (wkp13$FDP_pos_w6 + wkp13$FDP_neg_w6) / 2 - 
+  abs(wkp13$FDP_pos_w6 - wkp13$FDP_neg_w6)
+
+wkp13$GRUENE_amb_w1 <- (wkp13$GRUENE_pos_w1 + wkp13$GRUENE_neg_w1) / 2 - 
+  abs(wkp13$GRUENE_pos_w1 - wkp13$GRUENE_neg_w1)
+
+wkp13$GRUENE_amb_w3 <- (wkp13$GRUENE_pos_w3 + wkp13$GRUENE_neg_w3) / 2 - 
+  abs(wkp13$GRUENE_pos_w3 - wkp13$GRUENE_neg_w3)
+
+wkp13$GRUENE_amb_w6 <- (wkp13$GRUENE_pos_w6 + wkp13$GRUENE_neg_w6) / 2 - 
+  abs(wkp13$GRUENE_pos_w6 - wkp13$GRUENE_neg_w6)
+
+wkp13$LINKE_amb_w1 <- (wkp13$LINKE_pos_w1 + wkp13$LINKE_neg_w1) / 2 - 
+  abs(wkp13$LINKE_pos_w1 - wkp13$LINKE_neg_w1)
+
+wkp13$LINKE_amb_w3 <- (wkp13$LINKE_pos_w3 + wkp13$LINKE_neg_w3) / 2 - 
+  abs(wkp13$LINKE_pos_w3 - wkp13$LINKE_neg_w3)
+
+wkp13$LINKE_amb_w6 <- (wkp13$LINKE_pos_w6 + wkp13$LINKE_neg_w6) / 2 - 
+  abs(wkp13$LINKE_pos_w6 - wkp13$LINKE_neg_w6)
+
+
+wkp13$mean_amb_w1 <- rowMeans(wkp13[, c("CDU_amb_w1", "SPD_amb_w1", "FDP_amb_w1", "GRUENE_amb_w1", "LINKE_amb_w1")], na.rm = TRUE)
+
+wkp13$mean_amb_w3 <- rowMeans(wkp13[, c("CDU_amb_w3", "SPD_amb_w3", "FDP_amb_w3", "GRUENE_amb_w3", "LINKE_amb_w3")], na.rm = TRUE)
+
+wkp13$mean_amb_w6 <- rowMeans(wkp13[, c("CDU_amb_w6", "SPD_amb_w6", "FDP_amb_w6", "GRUENE_amb_w6", "LINKE_amb_w6")], na.rm = TRUE)
+
+
+wkp13$CDU_amb_mean <- rowMeans(wkp13[, c("CDU_amb_w1", "CDU_amb_w3", "CDU_amb_w6")], na.rm = TRUE)
+wkp13$SPD_amb_mean <- rowMeans(wkp13[, c("SPD_amb_w1", "SPD_amb_w3", "SPD_amb_w6")], na.rm = TRUE)
+wkp13$FDP_amb_mean <- rowMeans(wkp13[, c("FDP_amb_w1", "FDP_amb_w3", "FDP_amb_w6")], na.rm = TRUE)
+wkp13$GRUENE_amb_mean <- rowMeans(wkp13[, c("GRUENE_amb_w1", "GRUENE_amb_w3", "GRUENE_amb_w6")], na.rm = TRUE)
+wkp13$LINKE_amb_mean <- rowMeans(wkp13[, c("LINKE_amb_w1", "LINKE_amb_w3", "LINKE_amb_w6")], na.rm = TRUE)
+```
+
+```{r political variables, include=FALSE}
+
+##Political interest
+
+wkp13$pol_int_w1 <- 6 - wkp13$kp1_010
+wkp13$pol_int_w3 <- 6 - wkp13$kp3_010
+wkp13$pol_int_w6 <- 6 - wkp13$kp6_010
+
+wkp13$peol_int_mean <- rowMeans(wkp13[, c("pol_int_w1", "pol_int_w3", "pol_int_w6")], na.rm = TRUE)
+
+##Campaign interest [not assessed in wave 1]
+
+wkp13$camp_int_w3 <- 6 - wkp13$kp3_390
+wkp13$camp_int_w6 <- 6 - wkp13$kp6_390
+
+## Average political interest
+
+wkp13$mean_int_w3 <- rowMeans(wkp13[, c("pol_int_w3", "camp_int_w3")], na.rm = TRUE)
+wkp13$mean_int_w6 <- rowMeans(wkp13[, c("pol_int_w6", "camp_int_w6")], na.rm = TRUE)
+
+##Symbolic ideology
+
+wkp13$symb_id_w1 <- wkp13$kp1_1500
+wkp13$symb_id_w3 <- wkp13$kp3_1500
+wkp13$symb_id_w6 <- wkp13$kp6_1500
+
+wkp13$symb_id_mean <- rowMeans(wkp13[, c("symb_id_w1", "symb_id_w3", "symb_id_w6")], na.rm = TRUE)
+
+##Economic Ideology
+
+wkp13$econ_id_w1 <- 8 - wkp13$kp1_1090
+wkp13$econ_id_w3 <- 8 - wkp13$kp3_1090
+wkp13$econ_id_w6 <- 8 - wkp13$kp6_1090
+
+wkp13$econ_id_mean <- rowMeans(wkp13[, c("econ_id_w1", "econ_id_w3", "econ_id_w6")], na.rm = TRUE)
+
+##Socio-cultural Ideology (Immigration)
+
+wkp13$soc_id_w1 <- wkp13$kp1_1130
+wkp13$soc_id_w3 <- wkp13$kp3_1130
+wkp13$soc_id_w6 <- wkp13$kp6_1130
+
+wkp13$soc_id_mean <- rowMeans(wkp13[, c("soc_id_w1", "soc_id_w3", "soc_id_w6")], na.rm = TRUE)
+
+##Attitudes towards parties
+
+wkp13$CDU_att_w1 <- wkp13$kp1_430a
+wkp13$CDU_att_w3 <- wkp13$kp3_430a
+wkp13$CDU_att_w6 <- wkp13$kp6_430a
+
+wkp13$CDU_att_mean <- rowMeans(wkp13[, c("CDU_att_w1", "CDU_att_w3", "CDU_att_w6")], na.rm = TRUE)
+
+wkp13$CSU_att_w1 <- wkp13$kp1_430b
+wkp13$CSU_att_w3 <- wkp13$kp3_430b
+wkp13$CSU_att_w6 <- wkp13$kp6_430b
+
+wkp13$Union_att_w1 <- rowMeans(wkp13[, c("CDU_att_w1", "CSU_att_w1")], na.rm = TRUE)
+wkp13$Union_att_w3 <- rowMeans(wkp13[, c("CDU_att_w3", "CSU_att_w3")], na.rm = TRUE)
+wkp13$Union_att_w6 <- rowMeans(wkp13[, c("CDU_att_w6", "CSU_att_w6")], na.rm = TRUE)
+
+wkp13$Union_att_mean <- rowMeans(wkp13[, c("Union_att_w1", "Union_att_w3", "Union_att_w6")], na.rm = TRUE)
+
+wkp13$SPD_att_w1 <- wkp13$kp1_430c
+wkp13$SPD_att_w3 <- wkp13$kp3_430c
+wkp13$SPD_att_w6 <- wkp13$kp6_430c
+
+wkp13$SPD_att_mean <- rowMeans(wkp13[, c("SPD_att_w1", "SPD_att_w3", "SPD_att_w6")], na.rm = TRUE)
+
+wkp13$FDP_att_w1 <- wkp13$kp1_430d
+wkp13$FDP_att_w3 <- wkp13$kp3_430d
+wkp13$FDP_att_w6 <- wkp13$kp6_430d
+
+wkp13$FDP_att_mean <- rowMeans(wkp13[, c("FDP_att_w1", "FDP_att_w3", "FDP_att_w6")], na.rm = TRUE)
+
+wkp13$GRUENE_att_w1 <- wkp13$kp1_430e
+wkp13$GRUENE_att_w3 <- wkp13$kp3_430e
+wkp13$GRUENE_att_w6 <- wkp13$kp6_430e
+
+wkp13$GRUENE_att_mean <- rowMeans(wkp13[, c("GRUENE_att_w1", "GRUENE_att_w3", "GRUENE_att_w6")], na.rm = TRUE)
+
+wkp13$LINKE_att_w1 <- wkp13$kp1_430f
+wkp13$LINKE_att_w3 <- wkp13$kp3_430f
+wkp13$LINKE_att_w6 <- wkp13$kp6_430f
+
+wkp13$LINKE_att_mean <- rowMeans(wkp13[, c("LINKE_att_w1", "LINKE_att_w3", "LINKE_att_w6")], na.rm = TRUE)
+```
+
+```{r variability of attitudes, include=FALSE}
+
+##Number of valid responses across waves
+
+#total
+
+wkp13$CDU_att_freq_total <- 7 - rowSums(is.na(wkp13[, c("kp1_430a", "kp2_430a", "kp3_430a", "kp4_430a", "kp5_430a", "kp6_430a", "kp7_430a")]))
+
+wkp13$CSU_att_freq_total <- 7 - rowSums(is.na(wkp13[, c("kp1_430b", "kp2_430b", "kp3_430b", "kp4_430b", "kp5_430b", "kp6_430b", "kp7_430b")]))
+
+wkp13$SPD_att_freq_total <- 7 - rowSums(is.na(wkp13[, c("kp1_430c", "kp2_430c", "kp3_430c", "kp4_430c", "kp5_430c", "kp6_430c", "kp7_430c")]))
+
+wkp13$FDP_att_freq_total <- 7 - rowSums(is.na(wkp13[, c("kp1_430d", "kp2_430d", "kp3_430d", "kp4_430d", "kp5_430d", "kp6_430d", "kp7_430d")]))
+
+wkp13$GRUENE_att_freq_total <- 7 - rowSums(is.na(wkp13[, c("kp1_430e", "kp2_430e", "kp3_430e", "kp4_430e", "kp5_430e", "kp6_430e", "kp7_430e")]))
+
+wkp13$LINKE_att_freq_total <- 7 - rowSums(is.na(wkp13[, c("kp1_430f", "kp2_430f", "kp3_430f", "kp4_430f", "kp5_430f", "kp6_430f", "kp7_430f")]))
+
+##SD for each respondent
+
+wkp13 <- wkp13 %>% rowwise() %>% mutate(
+  CDU_att_sd_total = sd(c(kp1_430a, kp2_430a, kp3_430a, kp4_430a, kp5_430a, kp6_430a, kp7_430a), na.rm = TRUE)
+)
+
+wkp13 <- wkp13 %>% rowwise() %>% mutate(
+  CSU_att_sd_total = sd(c(kp1_430b, kp2_430b, kp3_430b, kp4_430b, kp5_430b, kp6_430b, kp7_430b), na.rm = TRUE)
+)
+
+wkp13 <- wkp13 %>% rowwise() %>% mutate(
+  SPD_att_sd_total = sd(c(kp1_430c, kp2_430c, kp3_430c, kp4_430c, kp5_430c, kp6_430c, kp7_430c), na.rm = TRUE)
+)
+
+wkp13 <- wkp13 %>% rowwise() %>% mutate(
+  FDP_att_sd_total = sd(c(kp1_430d, kp2_430d, kp3_430d, kp4_430d, kp5_430d, kp6_430d, kp7_430d), na.rm = TRUE)
+)
+
+wkp13 <- wkp13 %>% rowwise() %>% mutate(
+  GRUENE_att_sd_total = sd(c(kp1_430e, kp2_430e, kp3_430e, kp4_430e, kp5_430e, kp6_430e, kp7_430e), na.rm = TRUE)
+)
+
+wkp13 <- wkp13 %>% rowwise() %>% mutate(
+  LINKE_att_sd_total = sd(c(kp1_430f, kp2_430f, kp3_430f, kp4_430f, kp5_430f, kp6_430f, kp7_430f), na.rm = TRUE)
+)
+```
+
+```{r psychological dispositions, include=FALSE}
+
+##Need for Closure
+
+wkp13$nfc1 <- wkp13$kp1_1570g
+wkp13$nfc2 <- wkp13$kp1_1570h
+wkp13$nfc3 <- wkp13$kp1_1570i
+
+wkp13$nfc_M <- rowMeans(wkp13[, c("nfc1", "nfc2", "nfc3")], na.rm = TRUE)
+
+psych::alpha(wkp13[, c("nfc1", "nfc2", "nfc3")])
+```
+
+# Explore correlations
+
+```{r}
+knitr::kable(wkp13 %>% 
+              select(symb_id_w1,nfc_M, pol_int_w1, CDU_amb_w1, SPD_amb_w1, FDP_amb_w1, GRUENE_amb_w1, LINKE_amb_w1, mean_amb_w1) %>% 
+              correlate(), caption = "Wave 1")
+```
+
+```{r}
+knitr::kable(wkp13 %>% 
+              select(symb_id_w3,nfc_M, pol_int_w3, CDU_amb_w3, SPD_amb_w3, FDP_amb_w3, GRUENE_amb_w3, LINKE_amb_w3, mean_amb_w3) %>% 
+              correlate(), caption = "Wave 3")
+```
+
+```{r}
+knitr::kable(wkp13 %>% 
+              select(symb_id_w6,nfc_M, pol_int_w6, CDU_amb_w6, SPD_amb_w6, FDP_amb_w6, GRUENE_amb_w6, LINKE_amb_w6, mean_amb_w6) %>% 
+              correlate(), caption = "Wave 6")
+```
+
+
+# Average across Waves
+
+## CDU
+
+### Ideology & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = CDU_amb_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(CDU_amb_mean ~ symb_id_w1, data = wkp13)
+```
+
+### Attitude & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = Union_att_mean, y = CDU_amb_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(CDU_amb_mean ~ Union_att_mean, data = wkp13)
+```
+
+### Ideology & Attitude
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = Union_att_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Union_att_mean ~ symb_id_mean, data = wkp13)
+```
+
+### Ideology & Residual Ambivalence
+
+```{r, include=FALSE}
+wkp13$CDU_resid_mean <- resid(lm(CDU_amb_mean ~ CDU_att_mean, data = wkp13, na.action = na.exclude))
+```
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = CDU_resid_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(CDU_resid_mean ~ symb_id_mean, data = wkp13)
+```
+
+## SPD
+
+### Ideology & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = SPD_amb_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(SPD_amb_mean ~ symb_id_mean, data = wkp13)
+```
+
+### Attitude & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = SPD_att_mean, y = SPD_amb_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(SPD_amb_mean ~ SPD_att_mean, data = wkp13)
+```
+
+### Ideology & Attitude
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = SPD_att_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(SPD_att_mean ~ symb_id_mean, data = wkp13)
+```
+
+### Ideology & Residual Ambivalence
+
+```{r, include=FALSE}
+wkp13$SPD_resid_mean <- resid(lm(SPD_amb_mean ~ SPD_att_mean, data = wkp13, na.action = na.exclude))
+```
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = SPD_resid_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(SPD_resid_mean ~ symb_id_mean, data = wkp13)
+```
+
+## FDP
+
+### Ideology & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = FDP_amb_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(FDP_amb_mean ~ symb_id_mean, data = wkp13)
+```
+
+### Attitude & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = FDP_att_mean, y = FDP_amb_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(FDP_amb_mean ~ FDP_att_mean, data = wkp13)
+```
+
+### Ideology & Attitude
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = FDP_att_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(FDP_att_mean ~ symb_id_mean, data = wkp13)
+```
+
+### Ideology & Residual Ambivalence
+
+```{r, include=FALSE}
+wkp13$FDP_resid_mean <- resid(lm(FDP_amb_mean ~ FDP_att_mean, data = wkp13, na.action = na.exclude))
+```
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = FDP_resid_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(FDP_resid_mean ~ symb_id_mean, data = wkp13)
+```
+
+## GRUENE
+
+### Ideology & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = GRUENE_amb_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(GRUENE_amb_mean ~ symb_id_mean, data = wkp13)
+```
+
+### Attitude & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = GRUENE_att_mean, y = GRUENE_amb_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(GRUENE_amb_mean ~ GRUENE_att_mean, data = wkp13)
+```
+
+### Ideology & Attitude
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = GRUENE_att_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(GRUENE_att_mean ~ symb_id_mean, data = wkp13)
+```
+
+### Ideology & Residual Ambivalence
+
+```{r, include=FALSE}
+wkp13$GRUENE_resid_mean <- resid(lm(GRUENE_amb_mean ~ GRUENE_att_mean, data = wkp13, na.action = na.exclude))
+```
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = GRUENE_resid_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(GRUENE_resid_mean ~ symb_id_mean, data = wkp13)
+```
+
+## LINKE
+
+### Ideology & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = LINKE_amb_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(LINKE_amb_mean ~ symb_id_mean, data = wkp13)
+```
+
+### Attitude & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = LINKE_att_mean, y = LINKE_amb_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(LINKE_amb_mean ~ LINKE_att_mean, data = wkp13)
+```
+
+### Ideology & Attitude
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = LINKE_att_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(LINKE_att_mean ~ symb_id_mean, data = wkp13)
+```
+
+### Ideology & Residual Ambivalence
+
+```{r, include=FALSE}
+wkp13$LINKE_resid_mean <- resid(lm(LINKE_amb_mean ~ LINKE_att_mean, data = wkp13, na.action = na.exclude))
+```
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_mean, y = LINKE_resid_mean)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(LINKE_resid_mean ~ symb_id_mean, data = wkp13)
+```
+
+# Wave 1
+
+## CDU
+
+### Ideology & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = CDU_amb_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(CDU_amb_w1 ~ symb_id_w1, data = wkp13)
+```
+
+### Attitude & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = Union_att_w1, y = CDU_amb_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(CDU_amb_w1 ~ Union_att_w1, data = wkp13)
+```
+
+### Ideology & Attitude
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = Union_att_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(Union_att_w1 ~ symb_id_w1, data = wkp13)
+```
+
+### Ideology & Residual Ambivalence
+
+```{r, include=FALSE}
+wkp13$CDU_resid_w1 <- resid(lm(CDU_amb_w1 ~ CDU_att_w1, data = wkp13, na.action = na.exclude))
+```
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = CDU_resid_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(CDU_resid_w1 ~ symb_id_w1, data = wkp13)
+```
+
+## SPD
+
+### Ideology & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = SPD_amb_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(SPD_amb_w1 ~ symb_id_w1, data = wkp13)
+```
+
+### Attitude & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = SPD_att_w1, y = SPD_amb_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(SPD_amb_w1 ~ SPD_att_w1, data = wkp13)
+```
+
+### Ideology & Attitude
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = SPD_att_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(SPD_att_w1 ~ symb_id_w1, data = wkp13)
+```
+
+### Ideology & Residual Ambivalence
+
+```{r, include=FALSE}
+wkp13$SPD_resid_w1 <- resid(lm(SPD_amb_w1 ~ SPD_att_w1, data = wkp13, na.action = na.exclude))
+```
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = SPD_resid_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(SPD_resid_w1 ~ symb_id_w1, data = wkp13)
+```
+
+## FDP
+
+### Ideology & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = FDP_amb_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(FDP_amb_w1 ~ symb_id_w1, data = wkp13)
+```
+
+### Attitude & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = FDP_att_w1, y = FDP_amb_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(FDP_amb_w1 ~ FDP_att_w1, data = wkp13)
+```
+
+### Ideology & Attitude
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = FDP_att_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(FDP_att_w1 ~ symb_id_w1, data = wkp13)
+```
+
+### Ideology & Residual Ambivalence
+
+```{r, include=FALSE}
+wkp13$FDP_resid_w1 <- resid(lm(FDP_amb_w1 ~ FDP_att_w1, data = wkp13, na.action = na.exclude))
+```
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = FDP_resid_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(FDP_resid_w1 ~ symb_id_w1, data = wkp13)
+```
+
+## GRUENE
+
+### Ideology & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = GRUENE_amb_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(GRUENE_amb_w1 ~ symb_id_w1, data = wkp13)
+```
+
+### Attitude & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = GRUENE_att_w1, y = GRUENE_amb_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(GRUENE_amb_w1 ~ GRUENE_att_w1, data = wkp13)
+```
+
+### Ideology & Attitude
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = GRUENE_att_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(GRUENE_att_w1 ~ symb_id_w1, data = wkp13)
+```
+
+### Ideology & Residual Ambivalence
+
+```{r, include=FALSE}
+wkp13$GRUENE_resid_w1 <- resid(lm(GRUENE_amb_w1 ~ GRUENE_att_w1, data = wkp13, na.action = na.exclude))
+```
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = GRUENE_resid_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(GRUENE_resid_w1 ~ symb_id_w1, data = wkp13)
+```
+
+## LINKE
+
+### Ideology & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = LINKE_amb_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(LINKE_amb_w1 ~ symb_id_w1, data = wkp13)
+```
+
+### Attitude & Ambivalence
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = LINKE_att_w1, y = LINKE_amb_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(LINKE_amb_w1 ~ LINKE_att_w1, data = wkp13)
+```
+
+### Ideology & Attitude
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = LINKE_att_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(LINKE_att_w1 ~ symb_id_w1, data = wkp13)
+```
+
+### Ideology & Residual Ambivalence
+
+```{r, include=FALSE}
+wkp13$LINKE_resid_w1 <- resid(lm(LINKE_amb_w1 ~ LINKE_att_w1, data = wkp13, na.action = na.exclude))
+```
+
+**Two lines test**
+
+```{r, results= 'hide', message=FALSE, warning=FALSE}
+ggplot(wkp13, aes(x = symb_id_w1, y = LINKE_resid_w1)) + geom_jitter(alpha = 0.3) + geom_smooth()
+```
+
+```{r, results= 'hide', message=FALSE}
+twolines(LINKE_resid_w1 ~ symb_id_w1, data = wkp13)
+```
